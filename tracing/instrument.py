@@ -21,7 +21,7 @@ import functools
 import itertools
 import time
 
-from .model import Span, Trace, TRACE_FAILURE, TRACE_SUCCESS
+from .model import TRACE_FAILURE, TRACE_SUCCESS, Span, Trace
 from .redact import redact_text
 
 _SUMMARY_LIMIT = 240
@@ -106,7 +106,8 @@ class _SpanContext:
         span.duration_ms = round((end - span.started_at) * 1000.0, 3)
         if exc is not None:
             span.status = "error"
-            span.error = "%s: %s" % (exc_type.__name__, exc)
+            # Exception text often echoes the input (card, phone); redact it.
+            span.error = tracer._redact("%s: %s" % (exc_type.__name__, exc))
         span.input_summary = tracer._redact(span.input_summary)
         span.output_summary = tracer._redact(span.output_summary)
         self._run.spans.append(span)
@@ -147,7 +148,7 @@ class TraceRun:
             completion_tokens=completion_tokens,
             cost_usd=cost_usd,
             status="error" if error else "ok",
-            error=error,
+            error=tracer._redact(error),
             model=model,
         )
         self.spans.append(span)
@@ -186,7 +187,7 @@ class _TraceContext:
         trace = run.trace
         if exc is not None:
             trace.status = TRACE_FAILURE
-            trace.outcome = "%s: %s" % (exc_type.__name__, exc)
+            trace.outcome = tracer._redact("%s: %s" % (exc_type.__name__, exc))
         elif trace.status == "running":
             trace.status = TRACE_SUCCESS
             if not trace.outcome:

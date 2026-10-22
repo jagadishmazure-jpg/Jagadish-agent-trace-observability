@@ -11,6 +11,7 @@ blocked demand stays visible in analytics instead of vanishing.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -27,6 +28,13 @@ class Decision:
     reason: str
     user_spent_today: float
     global_spent_today: float
+
+
+def _require_cost(name: str, value: float) -> None:
+    """A negative or NaN cost would let a caller lower its own spend or
+    slip past the cap (NaN comparisons are always False)."""
+    if not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+        raise ValueError("%s must be a finite, non-negative number, got %r" % (name, value))
 
 
 def _day_key(at: float) -> str:
@@ -47,6 +55,7 @@ class BudgetChecker:
         self._global_day: dict = {}  # day -> usd
 
     def record_spend(self, user_id: str, cost_usd: float, at: float) -> None:
+        _require_cost("cost_usd", cost_usd)
         day = _day_key(at)
         key = (day, user_id)
         self._user_day[key] = round(self._user_day.get(key, 0.0) + cost_usd, 6)
@@ -59,6 +68,7 @@ class BudgetChecker:
         return self._global_day.get(_day_key(at), 0.0)
 
     def check(self, user_id: str, estimated_cost_usd: float, at: float) -> Decision:
+        _require_cost("estimated_cost_usd", estimated_cost_usd)
         user_spent = self.user_spent(user_id, at)
         global_spent = self.global_spent(at)
         if user_spent + estimated_cost_usd > self.policy.user_daily_usd:

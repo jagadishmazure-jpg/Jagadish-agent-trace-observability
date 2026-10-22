@@ -18,7 +18,6 @@ from collections import defaultdict
 from .model import TRACE_BUDGET_BLOCKED, TRACE_FAILURE, TRACE_SUCCESS
 from .store import group_spans_by_trace
 
-
 # ---------------------------------------------------------------- cost
 
 def total_cost(spans: list) -> float:

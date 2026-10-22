@@ -24,6 +24,9 @@ import re
 REDACTED = "[REDACTED]"
 
 _CARD_RE = re.compile(r"\b(?:\d{4}[ -]?){3}\d{4}\b")
+# 15-digit 4-6-5 card layout (e.g. 3782 822463 10005): no group reaches the
+# 9-digit fallback, so it needs its own rule.
+_CARD15_RE = re.compile(r"\b\d{4}[ -]\d{6}[ -]\d{5}\b")
 _PHONE_RE = re.compile(
     r"(?:\+1[\s.-]?)?(?:\(\d{3}\)\s*|\d{3}[\s.-]?)\d{3}[\s.-]?\d{4}\b"
 )
@@ -36,6 +39,7 @@ def redact_text(text: str) -> str:
     if not text:
         return text
     out = _CARD_RE.sub(REDACTED, text)
+    out = _CARD15_RE.sub(REDACTED, out)
     out = _PHONE_RE.sub(REDACTED, out)
     out = _SSN_RE.sub(REDACTED, out)
     out = _LONG_DIGITS_RE.sub(REDACTED, out)

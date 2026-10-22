@@ -2,9 +2,7 @@
 import json
 
 from tests.helpers import make_span, make_trace
-from tracing.mining import (cluster_failures, error_signature,
-                            export_eval_cases, select_traces,
-                            write_eval_cases)
+from tracing.mining import cluster_failures, error_signature, export_eval_cases, select_traces, write_eval_cases
 
 
 def _timeout_trace(tid, ms, start=1000.0):

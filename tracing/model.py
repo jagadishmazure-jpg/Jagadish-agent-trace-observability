@@ -10,7 +10,7 @@ store can persist them as JSONL without any third-party serialiser.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from typing import Optional
 
 # Trace statuses. "running" is transient; the rest are terminal.

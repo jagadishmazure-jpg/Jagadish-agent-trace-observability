@@ -1,7 +1,6 @@
 """Stores: JSONL round-trip, append-only behaviour, queries."""
 from tests.helpers import make_span, make_trace
-from tracing.store import (InMemoryStore, JsonlStore, group_spans_by_trace,
-                           query_traces, spans_for_trace)
+from tracing.store import InMemoryStore, JsonlStore, group_spans_by_trace, query_traces, spans_for_trace
 
 
 def test_jsonl_round_trip(tmp_path):

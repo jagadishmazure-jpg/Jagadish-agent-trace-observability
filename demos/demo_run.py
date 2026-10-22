@@ -196,8 +196,7 @@ def main(argv=None):
     os.makedirs(out_dir, exist_ok=True)
 
     from demos.report import build_summary, render_html, render_markdown
-    from tracing.mining import (export_eval_cases, select_traces,
-                                write_eval_cases)
+    from tracing.mining import export_eval_cases, select_traces, write_eval_cases
 
     jsonl_path = os.path.join(out_dir, "traces.jsonl")
     if os.path.exists(jsonl_path):

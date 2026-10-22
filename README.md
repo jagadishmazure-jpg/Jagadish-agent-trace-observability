@@ -22,7 +22,7 @@ Stdlib only. No network, no API keys, fully deterministic.
   JSONL store, redact-before-store), pure-function analytics, a budget
   checker consulted *before* spend, and mining that clusters failures by
   error signature and exports them as regression eval cases.
-- **Proof:** 96 deterministic tests; a simulated 40-request production day
+- **Proof:** 103 deterministic tests; a simulated 40-request production day
   for a fictional retailer where cost per successful request ($0.003358)
   runs ~21% above cost per request ($0.002770) — the gap is failed and
   looping runs that per-call dashboards hide.
@@ -128,7 +128,7 @@ with tracer.trace(session_id="s-1", user_id="u-9",
 ## How to run
 
 ```bash
-python3 -m pytest tests/          # 96 tests, offline, deterministic
+python3 -m pytest tests/          # 103 tests, offline, deterministic
 python3 demos/demo_run.py         # writes demos/output/{traces.jsonl,
                                   #   dashboard.md, dashboard.html,
                                   #   eval_cases.jsonl}
@@ -139,10 +139,12 @@ python3 scripts/check_brands.py   # brand/collision check
 ## Guardrails and security controls
 
 - **Redact before store:** no code path persists an unredacted span
-  summary; phone patterns run before generic digit runs so numbers are
+  summary, span error or trace outcome (exception text is redacted too); phone patterns run before generic digit runs so numbers are
   removed whole. Dates are intentionally preserved (see
   `tracing/redact.py`).
 - **Pre-flight budget caps** per user and globally, with denial reasons;
+  negative, NaN and infinite costs are rejected so a caller cannot lower its
+  own ledger or slip past a cap;
   blocked demand stays visible as `budget_blocked` traces.
 - **Orphan spans are reported**, not silently dropped or mis-attributed:
   a missing parent means instrumentation lost data.
@@ -179,6 +181,50 @@ python3 scripts/check_brands.py   # brand/collision check
 | Langfuse / OpenTelemetry exporter | Planned (store-interface adapter) |
 | Shared (multi-process) budget ledger | Planned |
 | Streaming percentile sketches | Planned |
+| CI: ruff, pytest, README-vs-fresh-run check, hashed brand check, gitleaks (full history); CodeQL; Dependabot; `main` rulesets | Built, running on GitHub Actions |
+
+## Verified numbers (regenerated in CI)
+
+CI re-runs these commands and fails if the blocks below drift
+(`python scripts/render_docs.py --check`).
+
+<!-- run: python scripts/count_tests.py -->
+```text
+103 tests collected
+```
+<!-- /run -->
+
+## Review fixes (portfolio-standard review, 2026-10-22)
+
+Found in an independent review and fixed, each pinned by a test in
+`tests/test_review_fixes.py`:
+
+1. **PII leaked through exceptions.** Span inputs/outputs were redacted,
+   but `span.error`, `trace.outcome` and `record_llm(error=...)` stored raw
+   exception text — e.g. `ValueError: card 4111 1111 1111 1111 declined` —
+   and failure mining then exported it into eval cases. All three are now
+   redacted.
+2. **Budget cap bypass.** `check()` accepted a negative estimate (always
+   allowed) and NaN (every comparison is False, so always allowed);
+   `record_spend()` accepted negative spend, which erased a user's ledger.
+   Both now reject non-finite or negative costs.
+3. **15-digit card layout not redacted.** `3782 822463 10005` (4-6-5) slipped
+   past the 16-digit rule and the 9-digit fallback; it now has its own rule.
+
+## Threat model and decisions
+
+- [docs/threat-model.md](docs/threat-model.md) — STRIDE + OWASP LLM Top 10.
+- [docs/adr/](docs/adr/) — key design decisions.
+
+## How the three evaluation / observability repos differ
+
+| Repo | Question it answers | When it runs | Input | Output |
+| --- | --- | --- | --- | --- |
+| [Jagadish-llm-evals-observability](https://github.com/jagadishmazure-jpg/Jagadish-llm-evals-observability) | *Is the model/agent output good?* A reusable metrics library: RAG and trajectory metrics, LLM-as-judge with bias probes, Wilson intervals | Offline, in CI | Recorded runs and golden sets | Scores and regression gates |
+| [Jagadish-agent-eval-studio](https://github.com/jagadishmazure-jpg/Jagadish-agent-eval-studio) | *Does this one agent get better when we change it?* An end-to-end worked project: a refund agent, 7 metrics, behaviour cases, guarded vs unguarded runs, a measured v1 → v2 loop | Offline, per change | One agent plus its eval cases | Before/after comparison of one agent |
+| [Jagadish-agent-trace-observability](https://github.com/jagadishmazure-jpg/Jagadish-agent-trace-observability) | *What happened in production, and what did it cost?* Span trees, PII-redacted traces, cost per successful request, latency, budget caps, loop detection, failures mined into new eval cases | Online, on live traffic | Execution traces | Dashboards, budget decisions, new eval cases for the other two |
+
+They connect: trace-observability turns production failures into eval cases, llm-evals-observability scores them, and eval-studio shows the full improve-and-remeasure loop on one agent.
 
 ## Related repos
 
