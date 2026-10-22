@@ -58,12 +58,16 @@ def test_nested_spans_link_to_parent():
     assert spans["root"].parent_span_id is None
 
 
+def _explode():
+    raise ValueError("kaboom")
+
+
 def test_exception_marks_span_and_trace_failure():
     tracer, store, _ = make_tracer()
     with pytest.raises(ValueError):
         with tracer.trace("s1", "u1", "agent", "1.0") as run:
             with run.span("tool", "explode"):
-                raise ValueError("kaboom")
+                _explode()
     trace = store.load_traces()[0]
     span = store.load_spans()[0]
     assert trace.status == "failure"

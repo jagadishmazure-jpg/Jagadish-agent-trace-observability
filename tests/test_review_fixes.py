@@ -7,6 +7,10 @@ from tracing.redact import redact_text
 from tracing.store import InMemoryStore
 
 
+def _fail(message):
+    raise ValueError(message)
+
+
 def _checker():
     return BudgetChecker(BudgetPolicy(user_daily_usd=1.0, global_daily_usd=5.0))
 
@@ -33,7 +37,7 @@ def test_exception_text_is_redacted_in_span_error_and_trace_outcome():
     with pytest.raises(ValueError):
         with tracer.trace("s1", "u1", "agent", "1.0") as run:
             with run.span("tool", "charge"):
-                raise ValueError("card 4111 1111 1111 1111 declined, call 555-123-4567")
+                _fail("card 4111 1111 1111 1111 declined, call 555-123-4567")
     trace = store.load_traces()[0]
     span = store.load_spans()[0]
     for text in (trace.outcome, span.error):
